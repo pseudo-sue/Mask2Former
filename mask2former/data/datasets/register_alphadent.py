@@ -25,7 +25,7 @@ _PREDEFINED_SPLITS_AlphaDent = {
     "AlphaDent_valid": ("images/valid", "annotations/valid.json"),
 }
 
-def _get_alphedent_meta():
+def _get_alphadent_meta():
     # Id 0 is reserved for ignore_label, we change ignore_label for 0
     # to 255 in our pre-processing.
     thing_ids = [k["id"] for k in ALPHADENT_CATEGORIES]
