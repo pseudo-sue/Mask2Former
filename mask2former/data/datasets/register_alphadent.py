@@ -8,7 +8,7 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.data.datasets.coco import load_coco_json, register_coco_instances
 from detectron2.utils.file_io import PathManager
 
-ALPHADENT_CLASSES = [
+ALPHADENT_CATEGORIES = [
     {"color": [161, 196, 235], "id": 1, "name": "Abrasion"},
     {"color": [212, 0, 0], "id": 2, "name": "Filling"},
     {"color": [46, 139, 87], "id": 3, "name": "Crown"},
@@ -25,37 +25,33 @@ _PREDEFINED_SPLITS_AlphaDent = {
     "AlphaDent_valid": ("images/valid", "annotations/valid.json"),
 }
 
+def _get_alphedent_meta():
+    # Id 0 is reserved for ignore_label, we change ignore_label for 0
+    # to 255 in our pre-processing.
+    thing_ids = [k["id"] for k in ALPHADENT_CATEGORIES]
+    assert len(thing_ids) == 9, len(thing_ids)
 
-# ---- (2) 유틸: COCO categories에서 클래스명 추출 ----
-def _extract_thing_classes_from_json(json_file: str) -> Optional[List[str]]:
-    try:
-        with open(json_file, "r") as f:
-            data = json.load(f)
-        cats = data.get("categories", [])
-        names = [c["name"] for c in cats if "name" in c]
-        return names if len(names) > 0 else None
-    except Exception:
-        return None
+    # For semantic segmentation, this mapping maps from contiguous stuff id
+    # (in [0, 91], used in models) to ids in the dataset (used for processing results)
+    thing_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(thing_ids)}
+    thing_classes = [k["name"] for k in ALPHADENT_CATEGORIES]
+
+    ret = {
+        "thing_dataset_id_to_contiguous_id": thing_dataset_id_to_contiguous_id,
+        "thing_classes": thing_classes,
+    }
+    return ret
 
 def register_all_Alphadent(root):
     root = os.path.join(root, "AlphaDent")
-    meta = _get_AlphaDent_meta()
-    for name, image_dirname, sem_seg_dirname in [
-        ("train", "images_detectron2/train", "annotations_detectron2/train"),
-        ("test", "images_detectron2/test", "annotations_detectron2/test"),
-    ]:
-        image_dir = os.path.join(root, image_dirname)
-        gt_dir = os.path.join(root, sem_seg_dirname)
-        name = f"AlphaDent_{name}"
-        DatasetCatalog.register(
-            name, lambda x=image_dir, y=gt_dir: load_sem_seg(y, x, gt_ext="png", image_ext="jpg")
-        )
-        MetadataCatalog.get(name).set(
-            image_root=image_dir,
-            sem_seg_root=gt_dir,
-            evaluator_type="sem_seg",
-            ignore_label=255,
-            **meta,
+    meta = _get_alphadent_meta()
+    for name, (image_root, json_file) in _PREDEFINED_SPLITS_AlphaDent.items():
+        # Assume pre-defined datasets live in `./datasets`.
+        register_coco_instances(
+            name,
+            meta,
+            os.path.join(root, json_file) if "://" not in json_file else json_file,
+            os.path.join(root, image_root),
         )
 
 _root = os.getenv("DETECTRON2_DATASETS", "datasets")
