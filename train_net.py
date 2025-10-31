@@ -48,7 +48,7 @@ from detectron2.utils.logger import setup_logger
 
 # MaskFormer
 from mask2former import (
-    AlphaDentInstanceBaselineDatasetMapper,
+    AlphaDentInstanceDatasetMapper,
     COCOInstanceNewBaselineDatasetMapper,
     COCOPanopticNewBaselineDatasetMapper,
     InstanceSegEvaluator,
@@ -169,8 +169,8 @@ class Trainer(DefaultTrainer):
         elif cfg.INPUT.DATASET_MAPPER_NAME == "coco_panoptic_lsj":
             mapper = COCOPanopticNewBaselineDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
-        elif cfg.INPUT.DATASET_MAPPER_NAME == "alphadent_instance_lsj":
-            mapper = AlphaDentInstanceBaselineDatasetMapper(cfg, True)
+        elif cfg.INPUT.DATASET_MAPPER_NAME == "alphadent_instance":
+            mapper = AlphaDentInstanceDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
         else:
             mapper = None
