@@ -17,7 +17,7 @@ from .data.dataset_mappers.mask_former_panoptic_dataset_mapper import (
 from .data.dataset_mappers.mask_former_semantic_dataset_mapper import (
     MaskFormerSemanticDatasetMapper,
 )
-from .data.dataset_mappers.alphadent_instance_baseline_dataset_mapper import AlphaDentInstanceBaselineDatasetMapper
+from .data.dataset_mappers.alphadent_instance_dataset_mapper import AlphaDentInstanceDatasetMapper
 
 # models
 from .maskformer_model import MaskFormer
