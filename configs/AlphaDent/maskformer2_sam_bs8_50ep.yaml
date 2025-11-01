@@ -1,10 +1,10 @@
-_BASE_: ./maskformer2_R50_bs16_50ep.yaml
+_BASE_: ./maskformer2_R50_bs8_50ep.yaml
 MODEL:
   BACKBONE:
     NAME: "SAMBackbone"
   SAM:
     TYPE: "vit_b"
-    CKPT: "checkpoint/sam_encoder/sam_vit_b_01ec64.pth"
+    CKPT: "checkpoints/sam_encoder/sam_vit_b_01ec64.pth"
     FREEZE: True
   PIXEL_MEAN: [123.675, 116.280, 103.530]
   PIXEL_STD: [58.395, 57.120, 57.375]
