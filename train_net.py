@@ -25,7 +25,7 @@ import torch
 import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog, build_detection_train_loader
+from detectron2.data import MetadataCatalog, build_detection_train_loader, build_detection_test_loader
 from detectron2.engine import (
     DefaultTrainer,
     default_argument_parser,
@@ -175,6 +175,16 @@ class Trainer(DefaultTrainer):
         else:
             mapper = None
             return build_detection_train_loader(cfg, mapper=mapper)
+        
+    @classmethod
+    def build_test_loader(cls, cfg, dataset_name):
+        # Semantic segmentation dataset mapper
+        if cfg.INPUT.DATASET_MAPPER_NAME == "alphadent_instance":
+            mapper = AlphaDentInstanceDatasetMapper(cfg, True)
+            return build_detection_test_loader(cfg, mapper=mapper)
+        else:
+            mapper = None
+            return build_detection_test_loader(cfg, dataset_name, mapper=mapper)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):

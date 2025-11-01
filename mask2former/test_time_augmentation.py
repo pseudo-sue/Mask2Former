@@ -6,9 +6,12 @@ from itertools import count
 import numpy as np
 import torch
 from fvcore.transforms import HFlipTransform
+from fvcore.transforms.transform import TransformList
+from detectron2.data import transforms as T
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 
+from detectron2.data import detection_utils as utils
 from detectron2.data.detection_utils import read_image
 from detectron2.modeling import DatasetMapperTTA
 
@@ -17,6 +20,53 @@ __all__ = [
     "SemanticSegmentorWithTTA",
 ]
 
+class ResizeLongestSide(T.Augmentation):
+    def __init__(self, target: int = 1024):
+        super().__init__()
+        self.target = int(target)
+
+    def get_transform(self, image):
+        h, w = image.shape[:2]
+        if max(h, w) == self.target:
+            return T.NoOpTransform()
+        scale = self.target / float(max(h, w))
+        newh = int(round(h * scale))
+        neww = int(round(w * scale))
+        return T.ResizeTransform(h, w, newh, neww)
+    
+class FixedSizeTTAMapper(DatasetMapperTTA):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.target = cfg.INPUT.IMAGE_SIZE
+        self.augs = [
+            ResizeLongestSide(self.target),
+            T.FixedSizeCrop((self.target, self.target)),
+        ]
+
+    def __call__(self, dataset_dict):
+        d = copy.deepcopy(dataset_dict)
+
+        # 원본 DatasetMapperTTA처럼 이미지 준비
+        if "image" not in d:
+            image = utils.read_image(d["file_name"], self.input_format)
+            image = torch.from_numpy(np.ascontiguousarray(image.transpose(2, 0, 1)))
+            d["image"] = image
+            d.setdefault("height", image.shape[1])
+            d.setdefault("width", image.shape[2])
+
+        # 증강 적용
+        img_np = d["image"].permute(1, 2, 0).cpu().numpy()
+        aug_input = T.AugInput(img_np)
+        aug_input, tfm = T.apply_transform_gens(self.augs, aug_input)
+        out_np = aug_input.image
+        out_chw = torch.from_numpy(np.ascontiguousarray(out_np.transpose(2, 0, 1)))
+
+        d["image"] = out_chw
+        d["height"], d["width"] = out_chw.shape[1], out_chw.shape[2]
+        d["transforms"] = TransformList(tfm.transforms)
+
+        # DatasetMapperTTA는 리스트를 반환해야 하므로 [d]로 감쌈
+        return [d]
 
 class SemanticSegmentorWithTTA(nn.Module):
     """
@@ -42,7 +92,7 @@ class SemanticSegmentorWithTTA(nn.Module):
         self.model = model
 
         if tta_mapper is None:
-            tta_mapper = DatasetMapperTTA(cfg)
+            tta_mapper = FixedSizeTTAMapper(self.cfg)
         self.tta_mapper = tta_mapper
         self.batch_size = batch_size
 
